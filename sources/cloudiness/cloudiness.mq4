@@ -1,2 +1,0 @@
-#description "Cloudiness"
-#property link
