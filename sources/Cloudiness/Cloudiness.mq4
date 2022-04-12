@@ -1,104 +1,108 @@
 #property link "https://github.com/OkazakiBolte/Weather-Forecaster/tree/main/sources/cloudiness"
 #property description "Cloudiness"
 #property copyright "K. Okazaki"
-#property version "0.0"
+#property version "1.0"
 #property strict
 
-#property indicator_separate_window // Show this custom indicator in a sub window
-#property indicator_buffers 3 // The number of indicators we're going to create, I guess
-#property indicator_color1 DodgerBlue // The colour of the first indicator
+#property indicator_separate_window  // Show this custom indicator in a sub
+                                     // window
+#property indicator_buffers 3        // The number of indicators we're going to
+                                     // create, I guess
+#property indicator_color1 clrRed
 #property indicator_color2 clrAqua
 #property indicator_color3 clrWhite
 
-// input int window_width = 5;
-
-input int sky_window = 10;
-input int clouds_window = 3;
-double cloudiness[];
-double sky[];
-double clouds[];
+input int    SKY_WINDOW    = 20;
+input int    CLOUDS_WINDOW = 5;
+input double alpha         = 0.5;
+double       cloudiness[];
+double       sky[];
+double       clouds[];
 
 /* ---- Initialization function ---- */
 int OnInit() {
     // Indicator line
-    SetIndexStyle(0, DRAW_LINE);
-    SetIndexStyle(1, DRAW_LINE);
-    SetIndexStyle(2, DRAW_LINE);
     SetIndexBuffer(0, cloudiness);
     SetIndexBuffer(1, sky);
     SetIndexBuffer(2, clouds);
+    // Indicator style
+    SetIndexStyle(0, DRAW_LINE);
+    SetIndexStyle(1, DRAW_LINE);
+    SetIndexStyle(2, DRAW_LINE, STYLE_DOT);
     // Set the indicator name and show it on the window
-    string short_name = "Cloudiness(" + IntegerToString(sky_window) + "," + IntegerToString(clouds_window) + ")";
+    string short_name = "Cloudiness(" + IntegerToString(SKY_WINDOW) + "," +
+                        IntegerToString(CLOUDS_WINDOW) + ")";
     IndicatorShortName(short_name);
     SetIndexLabel(0, short_name);
-    SetIndexLabel(1, "Sky(" + IntegerToString(sky_window) + ")");
-    SetIndexLabel(2, "Clouds(" + IntegerToString(clouds_window) + ")");
+    SetIndexLabel(1, "Sky(" + IntegerToString(SKY_WINDOW) + ")");
+    SetIndexLabel(2, "Clouds(" + IntegerToString(CLOUDS_WINDOW) + ")");
     // Check for the input
-    if (sky_window <= 0) {
-        Print("Invalid input parameter: sky_window = ", sky_window);
-        return(INIT_FAILED);
+    if (SKY_WINDOW <= 0) {
+        Print("Invalid input parameter: SKY_WINDOW = ", SKY_WINDOW);
+        return (INIT_FAILED);
     }
-    if (clouds_window <= 0) {
-        Print("Invalid input parameter: clouds_window = ", clouds_window);
-        return(INIT_FAILED);
+    if (CLOUDS_WINDOW <= 0) {
+        Print("Invalid input parameter: CLOUDS_WINDOW = ", CLOUDS_WINDOW);
+        return (INIT_FAILED);
     }
-    if (clouds_window > sky_window) {
-        Print("sky_window must be larger than clouds_window.");
-        return(INIT_FAILED);
+    if (CLOUDS_WINDOW > SKY_WINDOW) {
+        Print("SKY_WINDOW must be larger than CLOUDS_WINDOW.");
+        return (INIT_FAILED);
     }
-    SetIndexDrawBegin(0, sky_window);
-    SetIndexDrawBegin(1, sky_window);
-    SetIndexDrawBegin(2, clouds_window);
+    SetIndexDrawBegin(0, SKY_WINDOW);
+    SetIndexDrawBegin(1, SKY_WINDOW);
+    SetIndexDrawBegin(2, CLOUDS_WINDOW);
     // Done
-    return(INIT_SUCCEEDED);
+    return (INIT_SUCCEEDED);
 }
 
 /* ---- The main process ---- */
 int OnCalculate(
     // See the blog written in Japanese below for what each variable means.
     // https://mt4program.blogspot.com/2016/01/mql013-oncalculate.html
-    const int      rates_total,
-    const int      prev_calculated,
-    const datetime &time[],
-    const double   &open[],
-    const double   &high[],
-    const double   &low[],
-    const double   &close[],
-    const long     &tick_volume[],
-    const long     &volume[],
-    const int      &spread[]
-) {
+    const int rates_total, const int prev_calculated, const datetime &time[],
+    const double &open[], const double &high[], const double &low[],
+    const double &close[], const long &tick_volume[], const long &volume[],
+    const int &spread[]) {
     // Check the number of bars and if it's less than the period, do nothing
-    if (rates_total <= sky_window) return (0);
+    if (rates_total <= SKY_WINDOW) return (0);
 
-    // Use 'cloudiness', 'open', and 'close' as time series arrays.
-    ArraySetAsSeries(cloudiness, false);
-    ArraySetAsSeries(sky, false);
-    ArraySetAsSeries(clouds, false);
-    ArraySetAsSeries(open, false);
-    ArraySetAsSeries(close, false);
+    // Use tsome properties as time series arrays.
+    ArraySetAsSeries(cloudiness, true);
+    ArraySetAsSeries(sky, true);
+    ArraySetAsSeries(clouds, true);
+    ArraySetAsSeries(open, true);
+    ArraySetAsSeries(close, true);
 
-    // Initialize my custom indicators
-    int i, limit;
-    if (prev_calculated <= 0) {
-        for (i = 0; i < sky_window; i++) {
-            cloudiness[i] = 0.0;
-            sky[i] = 0.0;
-            clouds[i] = 0.0;
-        };
-        limit = sky_window;
-    } else {
-        limit = prev_calculated - 1;
+    // I want to draw the past part and update the indicator values on every
+    // tick
+    int limit;
+    if (prev_calculated <= 0)
+        limit = rates_total - 1;
+    else
+        limit = rates_total - prev_calculated;
+
+    /* ---- The main part of calculations ---- */
+    // You may be able to understand what these for-loop by reading this README;
+    // https://github.com/OkazakiBolte/mt4-practice#indicator%E3%82%92%E4%BD%9C%E3%82%8A%E3%81%9F%E3%81%84
+    int i, j;
+    for (i = limit; i >= 0; i--) {
+        sky[i]        = 0.0;
+        clouds[i]     = 0.0;
+        cloudiness[i] = 0.0;
+        if (rates_total - 1 >= SKY_WINDOW + i - 1) {
+            for (j = 0; j < SKY_WINDOW; j++) {
+                sky[i] += (close[i + j] - open[i + j]) / SKY_WINDOW;
+            }
+        }
+        if (rates_total - 1 >= CLOUDS_WINDOW + i - 1) {
+            for (j = 0; j < CLOUDS_WINDOW; j++) {
+                clouds[i] += (close[i + j] - open[i + j]) / CLOUDS_WINDOW;
+            }
+        }
+        cloudiness[i] = clouds[i] / (sky[i] + alpha);
     }
 
-    // The main loop of calculations
-    for (i = limit; i < rates_total; i++) {
-        sky[i]        = close[i-1] - open[i-sky_window];
-        clouds[i]     = close[i] - open[i-clouds_window];
-        cloudiness[i] = clouds[i] / sky[i];
-        // cloudiness[i] = sky[i] - clouds[i];
-    }
-
-    // Done
-    return(rates_total);
+    // OnCalculate functions should always return the number of bars
+    return (rates_total);
 }
