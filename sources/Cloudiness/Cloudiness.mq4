@@ -6,9 +6,8 @@
 
 #property indicator_separate_window  // Show this custom indicator in a sub
                                      // window
-#property indicator_buffers 3        // The number of indicators we're going to
-                                     // create, I guess
-#property indicator_color1 clrRed
+#property indicator_buffers 3        // The number of custome indicators
+#property indicator_color1 clrLime
 #property indicator_color2 clrAqua
 #property indicator_color3 clrWhite
 
@@ -29,6 +28,7 @@ int OnInit() {
     SetIndexStyle(0, DRAW_LINE);
     SetIndexStyle(1, DRAW_LINE);
     SetIndexStyle(2, DRAW_LINE, STYLE_DOT);
+
     // Set the indicator name and show it on the window
     string short_name = "Cloudiness(" + IntegerToString(SKY_WINDOW) + "," +
                         IntegerToString(CLOUDS_WINDOW) + ")";
@@ -36,6 +36,7 @@ int OnInit() {
     SetIndexLabel(0, short_name);
     SetIndexLabel(1, "Sky(" + IntegerToString(SKY_WINDOW) + ")");
     SetIndexLabel(2, "Clouds(" + IntegerToString(CLOUDS_WINDOW) + ")");
+
     // Check for the input
     if (SKY_WINDOW <= 0) {
         Print("Invalid input parameter: SKY_WINDOW = ", SKY_WINDOW);
@@ -52,6 +53,7 @@ int OnInit() {
     SetIndexDrawBegin(0, SKY_WINDOW);
     SetIndexDrawBegin(1, SKY_WINDOW);
     SetIndexDrawBegin(2, CLOUDS_WINDOW);
+
     // Done
     return (INIT_SUCCEEDED);
 }
